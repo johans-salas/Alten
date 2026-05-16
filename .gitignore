@@ -1,0 +1,14 @@
+# Credenciales
+credentials.json
+
+# Entorno virtual
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
