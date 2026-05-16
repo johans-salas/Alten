@@ -37,17 +37,17 @@ logger = logging.getLogger("ETLPipeline")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# CONFIGURACIÓN  GENERAL
+# CONFIGURACIÓN GENERAL
 # ──────────────────────────────────────────────────────────────────────────────
 
-BQ_PROJECT_ID  = "TU_PROJECT_ID"       # ← tu Project ID de Google Cloud
-BQ_DATASET_ID  = "SANDBOX_weather"     # ← nomenclatura requerida: SANDBOX_<nombre>
-BQ_TABLE_ID    = "raw_weather"         # ← tabla cruda dentro del sandbox
-BQ_CREDENTIALS = "credentials.json"   # ← ruta al JSON de la cuenta de servicio
+BQ_PROJECT_ID  = "TU_PROJECT_ID"       # Project ID de Google Cloud
+BQ_DATASET_ID  = "SANDBOX_weather"     # Dataset dentro del proyecto
+BQ_TABLE_ID    = "raw_weather"         # Tabla cruda dentro del sandbox
+BQ_CREDENTIALS = "credentials.json"    # Ruta al JSON de la cuenta de servicio
 
 API_BASE_URL   = "https://api.open-meteo.com/v1/forecast"
 
-#Configuración de las ubicaciones y variables a consultar
+# Configuración de las ubicaciones y variables a consultar
 LOCATIONS = [
     {"lat": 40.4168, "lon": -3.7038, "city": "Madrid"},
     {"lat": 41.3851, "lon":  2.1734, "city": "Barcelona"},
@@ -56,6 +56,7 @@ LOCATIONS = [
     {"lat": 43.2630, "lon": -2.9350, "city": "Bilbao"},
 ]
 
+# Varialbles a solicitar a la API para cada hora
 HOURLY_VARIABLES = [
     "temperature_2m",
     "relative_humidity_2m",
