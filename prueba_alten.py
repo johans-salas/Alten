@@ -40,7 +40,7 @@ logger = logging.getLogger("ETLPipeline")
 # CONFIGURACIÓN GENERAL
 # ──────────────────────────────────────────────────────────────────────────────
 
-BQ_PROJECT_ID  = "TU_PROJECT_ID"       # Project ID de Google Cloud
+BQ_PROJECT_ID  = "prueba-alten-js"     # Project ID de Google Cloud
 BQ_DATASET_ID  = "SANDBOX_weather"     # Dataset dentro del proyecto
 BQ_TABLE_ID    = "raw_weather"         # Tabla cruda dentro del sandbox
 BQ_CREDENTIALS = "credentials.json"    # Ruta al JSON de la cuenta de servicio
@@ -165,3 +165,143 @@ class APIClient:
             todos.extend(self._fetch_location(loc))
         logger.info("Total registros descargados: %d", len(todos))
         return todos
+    
+
+# ──────────────────────────────────────────────────────────────────────────────
+# CLASE 2: BigQueryLoader
+# ──────────────────────────────────────────────────────────────────────────────
+
+class BigQueryLoader:
+    """
+    Carga registros en el dataset SANDBOX_ de Google BigQuery.
+    Crea el dataset y la tabla automáticamente si no existen.
+
+    Uso:
+        loader  = BigQueryLoader()
+        n_filas = loader.load(registros)
+    """
+
+    # Esquema de la tabla raw en BigQuery
+    SCHEMA = [
+        bigquery.SchemaField("ciudad",               "STRING",  mode="REQUIRED"),
+        bigquery.SchemaField("latitud",              "FLOAT64", mode="NULLABLE"),
+        bigquery.SchemaField("longitud",             "FLOAT64", mode="NULLABLE"),
+        bigquery.SchemaField("timestamp_hora",       "STRING",  mode="REQUIRED"),
+        bigquery.SchemaField("fecha",                "STRING",  mode="NULLABLE"),
+        bigquery.SchemaField("hora",                 "INT64",   mode="NULLABLE"),
+        bigquery.SchemaField("temperatura_c",        "FLOAT64", mode="NULLABLE"),
+        bigquery.SchemaField("humedad_pct",          "FLOAT64", mode="NULLABLE"),
+        bigquery.SchemaField("temp_aparente_c",      "FLOAT64", mode="NULLABLE"),
+        bigquery.SchemaField("precipitacion_mm",     "FLOAT64", mode="NULLABLE"),
+        bigquery.SchemaField("velocidad_viento_kmh", "FLOAT64", mode="NULLABLE"),
+        bigquery.SchemaField("dir_viento_grados",    "FLOAT64", mode="NULLABLE"),
+        bigquery.SchemaField("codigo_clima",         "INT64",   mode="NULLABLE"),
+        bigquery.SchemaField("cargado_en_utc",       "STRING",  mode="NULLABLE"),
+    ]
+
+    def __init__(
+        self,
+        project_id:  str = BQ_PROJECT_ID,
+        dataset_id:  str = BQ_DATASET_ID,
+        table_id:    str = BQ_TABLE_ID,
+        credentials: str = BQ_CREDENTIALS,
+    ):
+        self.project_id = project_id
+        self.dataset_id = dataset_id
+        self.table_id   = table_id
+        self.table_ref  = f"{project_id}.{dataset_id}.{table_id}"
+
+        creds = service_account.Credentials.from_service_account_file(
+            credentials,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        )
+        self.client = bigquery.Client(project=project_id, credentials=creds)
+        logger.info("BigQueryLoader listo. Destino: %s", self.table_ref)
+
+    def _ensure_dataset(self):
+        """Crea el dataset SANDBOX_ si no existe."""
+        ref          = bigquery.Dataset(f"{self.project_id}.{self.dataset_id}")
+        ref.location = "EU"
+        try:
+            self.client.get_dataset(ref)
+            logger.info("Dataset '%s' ya existe.", self.dataset_id)
+        except Exception:
+            self.client.create_dataset(ref, exists_ok=True)
+            logger.info("Dataset '%s' creado.", self.dataset_id)
+
+    def _ensure_table(self):
+        """Crea la tabla raw con el esquema definido si no existe."""
+        table = bigquery.Table(self.table_ref, schema=self.SCHEMA)
+        try:
+            self.client.get_table(self.table_ref)
+            logger.info("Tabla '%s' ya existe.", self.table_ref)
+        except Exception:
+            self.client.create_table(table)
+            logger.info("Tabla '%s' creada.", self.table_ref)
+
+    def load(self, registros: list[dict], modo: str = "WRITE_APPEND") -> int:
+        """
+        Inserta registros en BigQuery.
+
+        Args:
+            registros : lista de dicts a insertar.
+            modo      : "WRITE_APPEND"   → añade a datos existentes (por defecto).
+                        "WRITE_TRUNCATE" → borra la tabla antes de insertar.
+        Returns:
+            Número de filas insertadas.
+        """
+        if not registros:
+            logger.warning("Lista vacía. Nada que insertar.")
+            return 0
+
+        self._ensure_dataset()
+        self._ensure_table()
+
+        job_config = bigquery.LoadJobConfig(
+            schema=self.SCHEMA,
+            write_disposition=modo,
+            source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+        )
+
+        logger.info("Subiendo %d registros ...", len(registros))
+        job = self.client.load_table_from_json(
+            registros, self.table_ref, job_config=job_config
+        )
+        job.result()  # espera a que el job termine
+
+        n_filas = self.client.get_table(self.table_ref).num_rows
+        logger.info("Carga completada. Filas totales en tabla: %d", n_filas)
+        return len(registros)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PUNTO DE ENTRADA
+# ──────────────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    logger.info("=" * 60)
+    logger.info("INICIO ETL PIPELINE")
+    logger.info("=" * 60)
+
+    # 1 — Descargar datos de la API
+    client    = APIClient()
+    registros = client.fetch_all()
+
+    if not registros:
+        logger.error("No se obtuvieron registros. Abortando.")
+        raise SystemExit(1)
+
+    # 2 — Guardar copia local JSON (para adjuntar al repositorio)
+    output_file = "registros_descargados.json"
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(registros, f, indent=2, ensure_ascii=False)
+    logger.info("Copia local guardada en '%s'.", output_file)
+
+    # 3 — Subir a BigQuery  →  SANDBOX_weather.raw_weather
+    loader  = BigQueryLoader()
+    subidos = loader.load(registros, modo="WRITE_APPEND")
+
+    logger.info("=" * 60)
+    logger.info("ETL FINALIZADO — %d registros subidos a %s.%s",
+                subidos, BQ_DATASET_ID, BQ_TABLE_ID)
+    logger.info("=" * 60)
