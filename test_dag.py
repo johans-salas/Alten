@@ -222,3 +222,4 @@ with DAG(
     # Definición del flujo completo del DAG    
     start >> time_diff_task >> tareas_impares
     tareas_pares >> end
+    
