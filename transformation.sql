@@ -68,7 +68,7 @@ datos_transformados AS (
 -- MERGE: garantiza idempotencia en la tabla destino
 -- Así al ejecutar el script N veces produce exactamente el mismo resultado
 
-MERGE `prueba-alten-jsN.integration_prueba_tecnica` AS destino
+MERGE `prueba-alten-js.INTEGRATION.integration_prueba_tecnica` AS destino
 USING datos_transformados AS origen
 ON  destino.ciudad         = origen.ciudad
 AND destino.timestamp_hora = origen.timestamp_hora
