@@ -50,7 +50,7 @@ services:
       - ./plugins:/opt/airflow/plugins
     command: scheduler
 
-    airflow-init:
+  airflow-init:
     image: apache/airflow:2.9.2
     depends_on:
       - postgres
