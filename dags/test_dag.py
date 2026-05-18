@@ -56,7 +56,7 @@ class TimeDiffOperator(BaseOperator):
     """
     # apply_defaults inyecta automáticamente los argumentos por defecto del DAG
     @apply_defaults
-    def __init__(self, diff_date: datetime, *args, **kwargs):
+    def __init__(self, diff_date: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.diff_date = diff_date # valor por defecto si no hay params en el run
 
@@ -86,16 +86,12 @@ class TimeDiffOperator(BaseOperator):
                     f"Formato de fecha no reconocido: '{raw_date}'. "
                     "Usa 'YYYY-MM-DD' o 'YYYY-MM-DD HH:MM:SS'."
                 )
-        elif isinstance(raw_date, datetime):
+        else:
             diff_date_dt = (
                 raw_date if raw_date.tzinfo
                 else raw_date.replace(tzinfo=timezone.utc)
             )
-        else:
-            raise TypeError(
-                f"diff_date debe ser str o datetime, recibido: {type(raw_date)}"
-            )
-        
+            
         # Cálculo de la diferencia con la fecha actual en UTC
         ahora      = datetime.now(timezone.utc)  # Obtener la fecha y hora actual en UTC    
         diferencia = ahora - diff_date_dt
@@ -107,7 +103,7 @@ class TimeDiffOperator(BaseOperator):
 
         self.log.info("=" * 50)
         self.log.info("TimeDiffOperator — resultado:")
-        self.log.info("  Fecha de referencia : %s", self.diff_date.isoformat())
+        self.log.info("  Fecha de referencia : %s", diff_date_dt.isoformat())
         self.log.info("  Fecha actual (UTC)  : %s", ahora.isoformat())
         self.log.info(
             "  Diferencia          : %d días, %02d:%02d:%02d (hh:mm:ss)",
@@ -117,7 +113,7 @@ class TimeDiffOperator(BaseOperator):
 
         # Devolver el resultado permite capturarlo si otro task lo necesita
         return {
-            "diff_date":  self.diff_date.isoformat(),
+            "diff_date":  diff_date.isoformat(),
             "ahora_utc":  ahora.isoformat(),
             "dias":       dias,
             "horas":      horas,
@@ -216,7 +212,7 @@ with DAG(
     # TimeDiffOperator 
     time_diff_task = TimeDiffOperator(
         task_id='time_diff',
-        diff_date=DAG_PARAMS["diff_date"].value,
+        diff_date="{{ params.diff_date }}",  # Se pasa el valor del param al operador (llega como string desde la UI)   
     )
 
     # Definición del flujo completo del DAG    
