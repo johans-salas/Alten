@@ -113,7 +113,7 @@ class TimeDiffOperator(BaseOperator):
 
         # Devolver el resultado permite capturarlo si otro task lo necesita
         return {
-            "diff_date":  diff_date.isoformat(),
+            "diff_date":  diff_date_dt.isoformat(),
             "ahora_utc":  ahora.isoformat(),
             "dias":       dias,
             "horas":      horas,
