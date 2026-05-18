@@ -34,9 +34,7 @@ services:
   airflow-init:
     <<: *airflow-common
     entrypoint: /bin/sh -c
-    command: >
-      airflow db migrate &&
-      airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com
+    command: airflow db migrate && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com
 
   airflow-webserver:
     <<: *airflow-common
