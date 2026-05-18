@@ -214,7 +214,7 @@ with DAG(
             tarea_impar >> tarea_par
 
     # TimeDiffOperator 
-        time_diff_task = TimeDiffOperator(
+    time_diff_task = TimeDiffOperator(
         task_id='time_diff',
         diff_date=DAG_PARAMS["diff_date"].value,
     )
