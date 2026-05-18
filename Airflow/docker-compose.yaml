@@ -67,4 +67,4 @@ services:
 
 volumes:
   postgres-db:
-  airflow-logs
+  airflow-logs:
