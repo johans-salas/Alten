@@ -20,17 +20,12 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
-    _AIRFLOW_WWW_USER_CREATE: 'true'
-    _AIRFLOW_WWW_USER_USERNAME: admin
-    _AIRFLOW_WWW_USER_PASSWORD: admin
   volumes:
     - ./dags:/opt/airflow/dags
     - airflow-logs:/opt/airflow/logs
   depends_on:
     postgres:
       condition: service_healthy
-  restart: on-failure
 
 services:
 
@@ -50,28 +45,22 @@ services:
 
   airflow-init:
     <<: *airflow-common
-    entrypoint: >
-      /bin/sh -c "
-        airflow db migrate &&
-        airflow users create
-          --username admin
-          --password admin
-          --firstname Admin
-          --lastname User
-          --role Admin
-          --email admin@example.com
-      "
+    entrypoint: /bin/sh -c
+    command: >
+      "airflow db migrate &&
+       airflow users create
+         --username admin
+         --password admin
+         --firstname Admin
+         --lastname User
+         --role Admin
+         --email admin@example.com"
 
   airflow-webserver:
     <<: *airflow-common
     command: webserver
     ports:
       - "8080:8080"
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   airflow-scheduler:
     <<: *airflow-common
